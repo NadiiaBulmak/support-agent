@@ -6,11 +6,14 @@
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
   provider = "postgresql"
+  extensions = [vector]
 }
+
 enum AgentRunStatus {
   RUNNING
   COMPLETED
@@ -37,17 +40,17 @@ model Document {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  chunks DocumentsChunk[]
+  chunks DocumentChunk[]
 
   @@map("documents")
 }
 
-model DocumentsChunk {
+model DocumentChunk {
   id         String   @id @default(uuid())
   documentId String
   content    String
   chunkIndex Int
-  embedding  Unsupported("vector(1536)")?
+  embedding  Unsupported("vector(3072)")?
   metadata   Json?
   createdAt  DateTime @default(now())
 
