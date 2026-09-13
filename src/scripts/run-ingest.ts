@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from '../app.module.js';
-import { IngestService } from '../knowledge/ingest/ingest.service.js';
+import { AppModule } from '#/app.module.js';
+import { IngestService } from '#/modules/knowledge/ingest/ingest.service.js';
 
 const bootstrap = async () => {
   console.log('Ініціалізація NestJS контексту...');

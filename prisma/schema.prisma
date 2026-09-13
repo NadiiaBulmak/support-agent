@@ -15,9 +15,11 @@ datasource db {
 }
 
 enum AgentRunStatus {
-  RUNNING
-  COMPLETED
-  FAILED
+  SUCCESS
+  NEEDS_CLARIFICATION
+  OUT_OF_SCOPE
+  SAFETY_ESCALATION
+  ERROR
 }
 
 enum ToolCallStatus {
@@ -64,7 +66,7 @@ model DocumentChunk {
 model AgentRun {
   id         String        @id @default(uuid())
   question   String
-  status     AgentRunStatus @default(RUNNING)
+  status     AgentRunStatus @default(ERROR)
   intent     String?
   answer     String?
   confidence Float?

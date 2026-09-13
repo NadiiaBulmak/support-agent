@@ -1,3 +1,0 @@
-// AgentState
-// AgentResult
-// Intent
