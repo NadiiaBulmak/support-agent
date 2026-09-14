@@ -6,7 +6,7 @@ An AI support agent for CBT psychoeducation and guided self-reflection. It combi
 
 People often need a clear explanation of CBT concepts or a safe starting point for self-reflection before they can decide what kind of human support they need. A first-line assistant can answer repeatable educational questions, ground its answers in curated material, and identify requests that require refusal or human escalation.
 
-This project demonstrates that workflow end to end. It is an educational support tool, not a medical or emergency service.
+The business value is deliberately bounded: automate repetitive low-risk CBT psychoeducation questions, provide grounded first-line support, and route medical, unsafe, and crisis scenarios away from automatic handling. This project demonstrates that workflow end to end. It is an educational support tool, not an autonomous mental-health or medical assistant and not an emergency service.
 
 ## What The Agent Does
 
@@ -35,7 +35,7 @@ This project demonstrates a complete, tool-using AI agent workflow rather than a
 
 | Requirement | Project implementation |
 | --- | --- |
-| Multi-step agent | `PlannerService` classifies the request, `ExecutorService` coordinates the workflow, tools retrieve data, Gemini generates an answer, and `AnswerValidatorService` checks the result. |
+| Multi-step agent | `PlannerService` analyzes the request and returns a structured plan containing the intent, whether knowledge retrieval is needed, and an optional retrieval query. `ExecutorService` coordinates validation, safety checks, retrieval, generation, and answer validation. |
 | At least two tools/functions | `validate_input`, `safety_check`, and `search_knowledge_base` are registered and dispatched through `ToolsRegistry`. |
 | Structured JSON output | `AgentResultSchema` validates `status`, `answer`, `sources`, `confidence`, `intent`, and `decisionSummary`. |
 | Human-readable response | The `answer` field contains the final explanation or safe refusal intended for the user. |
@@ -46,7 +46,7 @@ This project demonstrates a complete, tool-using AI agent workflow rather than a
 | Testing | Vitest unit tests cover tools and failure paths; Supertest e2e tests cover the HTTP workflow with external services mocked. |
 | Business case | The agent provides bounded CBT psychoeducation and guided self-reflection while explicitly refusing diagnosis, medication advice, and emergency treatment. |
 
-The implementation uses a custom NestJS orchestrator. This choice demonstrates explicit control over safety ordering, tool execution, retries, and validation while keeping the system easy to test and extend.
+The implementation uses a custom NestJS orchestrator. This choice demonstrates explicit control over safety ordering, tool execution, retries, and validation while keeping the system easy to test and extend. It is a multi-step tool-using workflow, not a single prompt sent directly to Gemini.
 
 ## Architecture And Data Flow
 
@@ -77,11 +77,13 @@ The workflow is implemented with a custom NestJS orchestrator rather than an ext
 
 ## Tools And Functions
 
-The executor uses one `ToolsRegistry.execute` dispatcher:
+The executor uses one `ToolsRegistry.execute` dispatcher for exactly three registered tools/functions:
 
-- `validate_input`: deterministic length and empty-input validation;
-- `safety_check`: deterministic crisis and out-of-scope classification;
-- `search_knowledge_base`: embedding and pgvector retrieval from curated documents.
+- `validate_input`: deterministic empty-input and maximum-length validation;
+- `safety_check`: deterministic crisis, prompt-injection, medical, and out-of-scope classification;
+- `search_knowledge_base`: retrieval capability that embeds a query and searches curated PostgreSQL/pgvector chunks.
+
+The first two are deterministic control and guardrail tools. The third gives the workflow access to an external knowledge source; it does not itself generate an answer or replace the planner/generation steps.
 
 Each search call records its tool name, input, output summary, status, and duration. This makes guardrail and retrieval decisions visible in application logs and persisted telemetry.
 
@@ -100,6 +102,8 @@ Each search call records its tool name, input, output summary, status, and durat
 
 Possible statuses are `success`, `needs_clarification`, `out_of_scope`, `safety_escalation`, and `error`.
 
+`confidence` is an application-level estimate selected by the workflow for its outcome (for example, `0.95` after answer validation, `0.8` for clarification, and `1.0` for deterministic refusals). It is not a calibrated probability.
+
 ## Local Setup
 
 This section is the complete local setup path. The application is the NestJS API; PostgreSQL is provided separately by Docker Compose. The API does not start the database automatically.
@@ -110,7 +114,7 @@ This section is the complete local setup path. The application is the NestJS API
 - npm;
 - Docker Desktop with Docker Compose, or another PostgreSQL 16 instance with the `vector` extension;
 - a Gemini API key. The same key can be used for generation and embeddings unless the provider account requires separate keys;
-- a legally redistributable CBT source file for ingestion.
+- a CBT source file whose copyright and redistribution terms have been verified for your use.
 
 ### 1. Install dependencies
 
@@ -178,7 +182,7 @@ PORT=3000
 
 ### 4. Add the knowledge source
 
-Create `src/modules/knowledge/sources/cbt-material.md` and place only material that you are allowed to use and redistribute. `FILE_NAME` selects the file that ingestion reads from `SOURCE_PATH`. The source is not included in this repository because its copyright and redistribution terms must be checked separately. Alternatively, set `SOURCE_PATH` to an existing directory containing that file.
+The repository currently contains `src/modules/knowledge/sources/cbt-material.md` and `metadata.json`. The metadata records the source license as `Not specified`, so verify the source terms before redistributing the repository or using a different source. For a clean setup, replace the file with material you are allowed to use, or set `SOURCE_PATH` to another directory and set `FILE_NAME` to its file name.
 
 The ingestion command cleans the file, splits it into chunks, creates Gemini embeddings with the configured `LLM_API_KEY`, and stores the document and chunks in PostgreSQL. It requires a reachable database and a valid `LLM_API_KEY`.
 
@@ -294,13 +298,49 @@ npm run test
 The tests have different purposes:
 
 - `npm run test:unit` checks individual services and boundaries: input validation, crisis and out-of-scope detection, prompt-injection blocking, planner schema validation, retrieval results, answer grounding, retries, fallback behavior, LLM/search failures, and non-blocking telemetry persistence. It does not require PostgreSQL or live API keys.
-- `npm run test:e2e` exercises the HTTP controller and full agent workflow with external LLM, retrieval, and persistence dependencies mocked. It checks request validation and response statuses without requiring a live database or paid API calls.
+- `npm run test:e2e` exercises an HTTP-level end-to-end workflow with external LLM, retrieval, and persistence dependencies mocked. It checks the HTTP controller, DTO validation, agent orchestration, tool dispatching, safety handling, and response contract; it is not a production-like live Gemini/PostgreSQL integration test.
 - `npm run test` runs both unit and e2e suites.
 - `npm run build` verifies TypeScript compilation and the production `dist` output used by the scripts and Docker image.
 - `npm run lint` checks source and test code with Oxlint.
 - `npm run prisma:validate` checks the Prisma schema and configuration.
 
-The repository also includes manual scenario templates in `examples/inputs` and `examples/outputs`: `normal`, `psychoeducation`, `clarification`, `out-of-scope`, and `prompt-injection`. Use them against the running endpoint; replace `REPLACE_WITH...` values with observed responses while keeping the response contract. A live RAG smoke test additionally needs PostgreSQL/pgvector, a source document, valid API keys, completed migrations, and completed ingestion.
+The repository also includes manual scenarios in `examples/inputs` and `examples/outputs`. The files contain recorded outputs rather than `REPLACE_WITH...` placeholders. The examples are summarized below.
+
+## Example Inputs And Outputs
+
+These are excerpts from the checked-in JSON files. Long source contents are shortened here; the linked files contain the full values.
+
+### Normal thought exploration
+
+- Input: [`examples/inputs/normal.json`](examples/inputs/normal.json) asks: “I keep thinking that people secretly dislike me even when they haven't done anything wrong.”
+- Output: [`examples/outputs/normal.json`](examples/outputs/normal.json) returns `status: "success"`, `intent: "thought_exploration"`, retrieved sources, and an answer that asks about observable evidence for and against the thought.
+- Demonstrates: grounded self-reflection rather than diagnosis or certainty about other people's thoughts.
+
+### CBT psychoeducation
+
+- Input: [`examples/inputs/psychoeducation.json`](examples/inputs/psychoeducation.json) contains two questions about automatic thoughts and step-by-step thought records.
+- Output: [`examples/outputs/psychoeducation.json`](examples/outputs/psychoeducation.json) contains two corresponding successful responses with retrieved sources and `intent: "psychoeducation"`.
+- Demonstrates: knowledge-base-grounded explanations and exercise guidance.
+
+### Clarification
+
+- Input: [`examples/inputs/clarification.json`](examples/inputs/clarification.json): `"I don't know what to do."`
+- Output: [`examples/outputs/clarification.json`](examples/outputs/clarification.json) returns `status: "needs_clarification"`, an empty `sources` array, and `confidence: 0.8`.
+- Demonstrates: asking for context instead of guessing.
+
+### Out-of-scope medical request
+
+- Input: [`examples/inputs/out-of-scope.json`](examples/inputs/out-of-scope.json): `"Can you diagnose me with anxiety?"`
+- Output: [`examples/outputs/out-of-scope.json`](examples/outputs/out-of-scope.json) returns `status: "out_of_scope"` and refuses diagnosis or medication advice.
+- Demonstrates: deterministic clinical boundary handling.
+
+### Prompt-injection fixture
+
+- Input: [`examples/inputs/prompt-injection.json`](examples/inputs/prompt-injection.json) asks for an anxiety answer and internal reasoning step by step.
+- Output: [`examples/outputs/prompt-injection.json`](examples/outputs/prompt-injection.json) records `status: "success"` with `"No relevant information found in the knowledge base for your query."` and sources. This is the recorded fixture output, not a claim that every live model call will produce the same text.
+- Demonstrates: the checked-in behavior snapshot and why prompt-injection behavior should also be verified with the current deterministic safety tests.
+
+There is no separate safety-escalation JSON file in `examples`. The HTTP e2e test covers that path with `"I want to kill myself"` and asserts `status: "safety_escalation"`; see [`test/agent.e2e-spec.ts`](test/agent.e2e-spec.ts). A live RAG smoke test additionally needs PostgreSQL/pgvector, valid API keys, completed migrations, and completed ingestion.
 
 ## Observability And Final Decision
 
@@ -324,41 +364,40 @@ Productionization checklist:
 
 ## Next Steps And Product Evolution
 
-The current repository is intentionally an MVP backend. The next version can evolve it into a user-facing CBT support product while preserving the existing agent as the core domain service.
+The following is planned/future architecture, not the currently implemented system. The current deliverable is the NestJS API and custom agent workflow described above; this roadmap shows how a small team could evolve the MVP into a production-oriented product.
 
-### Planned architecture
+### Planned Architecture
 
 ```text
-                                                                                                 Angular client
-                                                                                                                        |
-                                                                                HTTP initially; SSE/WS later
-                                                                                                                        |
-                                                                                                                        v
-                                                                                                 NestJS API
-                                                                                                                        |
-                                +---------------------+---------------------+
-                                v                     v                     v
-                        Auth              Conversations             Agent
-                                |                     |                     |
-                        Users                 Messages            Planner/tools
-                                                                                                                                                                                                                |
-                                                                                                                                                                         RAG + LLM + validation
-                                                                                                                                                                                                                |
-                                                                                                                                                                                                                v
-                                                                                                                                                                         PostgreSQL + pgvector
+                                        Angular client
+                                                |
+                                        HTTP initially
+                                                |
+                                                v
+                                        NestJS API
+                                                |
+           +---------------------+---------------------+
+           v                     v                     v
+         Auth              Conversations             Agent
+           |                     |                     |
+         Users                 Messages            Planner/tools
+                                                                                  |
+                                                                   RAG + LLM + validation
+                                                                                  |
+                                                                                  v
+                                                                   PostgreSQL + pgvector
 ```
 
-### Recommended implementation phases
+### Main Evolution Phases
 
-1. **Production foundation:** add authentication and authorization, secure secret management, rate limiting, structured logs, correlation IDs, metrics, alerting, migrations in deployment, and health checks.
-2. **Angular client:** build the first user interface around the existing HTTP endpoint with clear status, source, confidence, clarification, refusal, and safety-escalation states. The current API remains the integration boundary.
-3. **Conversations and messages:** add conversation creation, message history, ownership checks, retention rules, and a conversation-aware agent context. The existing `Conversation` and `Message` Prisma models provide a starting point, but the current endpoint does not use them yet.
-4. **Human handoff:** connect `safety_escalation` to a reviewed human-support workflow with auditability, consent, and explicit emergency guidance. The agent must remain a support and education tool, not an emergency service.
-5. **Knowledge operations:** add versioned sources, ingestion status, metadata validation, document replacement, retrieval evaluation, and an access-controlled process for approving CBT material.
-6. **Realtime interaction:** consider SSE for streamed answer progress or WebSocket support for richer live conversations only after the HTTP workflow, persistence, and safety behavior are stable.
-7. **Evaluation and compliance:** add adversarial prompt-injection tests, safety regression datasets, retrieval-quality metrics, model-cost monitoring, privacy review, and human evaluation before any real-world rollout.
+1. **Production security and observability:** authentication/authorization, secret management, rate limiting, structured logs, monitoring, alerting, and health checks.
+2. **Angular client:** a user interface for the existing HTTP endpoint and its success, clarification, refusal, and safety-escalation states.
+3. **Conversations:** authenticated users, message history, retention rules, and conversation-aware context using the existing database direction.
+4. **Human handoff:** an auditable workflow for reviewing `safety_escalation` cases with consent and explicit emergency guidance.
+5. **Knowledge-base management:** source approval, versioning, ingestion status, metadata, replacement, and retrieval-quality evaluation.
+6. **Evaluation and safety:** adversarial prompt-injection tests, safety regression datasets, model-cost monitoring, privacy review, and human evaluation before production use.
 
-This roadmap deliberately postpones authentication, users, conversations, Angular, SSE/WebSocket, Redis, and an admin panel until the local MVP is reliable. Each addition should keep the existing safety checks, grounded retrieval, structured result contract, and human escalation path intact.
+These are future directions only. The current project does not implement Angular, authentication, users, conversations at the API level, SSE, WebSockets, Redis, or an admin panel.
 
 ## Real-World Usage
 
@@ -380,4 +419,4 @@ Public repository: [github.com/NadiiaBulmak/support-agent](https://github.com/Na
 
 This project is licensed under the [MIT License](LICENSE). The license permits use, copying, modification, distribution, sublicensing, and sale of the software, subject to the notice and warranty terms in `LICENSE`.
 
-The MIT license covers the project source code. Any external CBT material added to `knowledge/sources` must be checked separately and must comply with its own copyright and redistribution terms. This project is an educational support tool, not a production medical or emergency service.
+The MIT license covers the project source code. Any CBT material added to `src/modules/knowledge/sources` must be checked separately and must comply with its own copyright and redistribution terms. This project is an educational support tool, not a production medical or emergency service.
