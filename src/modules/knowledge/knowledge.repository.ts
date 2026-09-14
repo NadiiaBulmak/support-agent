@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '#/modules/db/prisma/prisma.service.js';
-import { SearchResultChunk } from '#/shared/types/knowledgeRepository.types.js';
+import { SearchResultChunk } from '#/shared/interfaces/searchResultChunk.js';
+import { KNOWLEDGE_REPOSITORY_DEFAULT_LIMIT } from '#/shared/constants/domain.constants.js';
 
 @Injectable()
 export class KnowledgeRepository {
@@ -42,7 +43,7 @@ export class KnowledgeRepository {
 
   public async findSimilarChunks(
     vector: number[],
-    limit: number = 4,
+    limit: number = KNOWLEDGE_REPOSITORY_DEFAULT_LIMIT,
   ): Promise<SearchResultChunk[]> {
     const vectorString = `[${vector.join(',')}]`;
 

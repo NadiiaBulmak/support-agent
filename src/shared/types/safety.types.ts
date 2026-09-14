@@ -1,1 +1,0 @@
-export type SafetyStatus = 'safe' | 'needs_escalation' | 'out_of_scope';

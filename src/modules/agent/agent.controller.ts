@@ -15,15 +15,17 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { AgentService } from '#/modules/agent/agent.service.js';
-import { AgentResult } from '#/shared/dto/agentResult.dto.js';
 import { RunAgentDtoSchema } from '#/shared/dto/runAgent.dto.js';
+import { AgentResultStatus, IntentEnum } from '#/shared/enums/domain.enums.js';
+import { AgentResult } from '#/shared/types/dto.types.js';
+import { MAX_INPUT_LENGTH } from '#/shared/constants/index.js';
 
 class RunAgentSwaggerDto {
   @ApiProperty({
     description: 'User question for the support agent',
     example: 'What is cognitive restructuring?',
     minLength: 1,
-    maxLength: 1000,
+    maxLength: MAX_INPUT_LENGTH,
   })
   question!: string;
 }
@@ -48,14 +50,8 @@ export class AgentController {
       properties: {
         status: {
           type: 'string',
-          enum: [
-            'success',
-            'needs_clarification',
-            'out_of_scope',
-            'safety_escalation',
-            'error',
-          ],
-          example: 'success',
+          enum: Object.values(AgentResultStatus),
+          example: AgentResultStatus.SUCCESS,
         },
         answer: { type: 'string', example: 'Cognitive restructuring...' },
         sources: {
@@ -79,14 +75,8 @@ export class AgentController {
         },
         intent: {
           type: 'string',
-          enum: [
-            'psychoeducation',
-            'thought_exploration',
-            'cbt_exercise',
-            'clarification',
-            'out_of_scope',
-          ],
-          example: 'psychoeducation',
+          enum: Object.values(IntentEnum),
+          example: IntentEnum.PSYCHOEDUCATION,
         },
       },
       required: ['status', 'answer', 'sources', 'confidence', 'decisionSummary'],

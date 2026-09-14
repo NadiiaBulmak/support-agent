@@ -9,6 +9,7 @@ async function bootstrap() {
     .setDescription('API for processing support questions with the support agent')
     .setVersion('1.0')
     .build();
+    
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs', app, swaggerDocument);
 

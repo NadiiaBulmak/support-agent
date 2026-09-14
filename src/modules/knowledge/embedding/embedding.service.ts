@@ -3,6 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Logger } from '@nestjs/common';
 import { errorMessages } from '#/shared/constants/errorMessages.js';
+import {
+  EMBEDDING_DIMENSIONS,
+  EMBEDDING_MODEL,
+} from '#/shared/constants/domain.constants.js';
+import { EnvironmentVariables } from '#/shared/enums/domain.enums.js';
 
 @Injectable()
 export class EmbeddingService {
@@ -10,7 +15,7 @@ export class EmbeddingService {
   private readonly logger = new Logger(EmbeddingService.name);
 
   constructor(private configService: ConfigService) {
-    const apiKey = this.configService.get<string>('EMBEDDING_API_KEY');
+    const apiKey = this.configService.get<string>(EnvironmentVariables.API_KEY);
     if (!apiKey) {
       this.logger.error(errorMessages.embeddingApiKeyMissing);
     } else {
@@ -24,14 +29,14 @@ export class EmbeddingService {
     }
 
     const model = this.genAI.getGenerativeModel({
-      model: 'gemini-embedding-2',
+      model: EMBEDDING_MODEL,
     });
     const result = await model.embedContent(input);
     const vector = result.embedding?.values;
 
     if (
       !Array.isArray(vector) ||
-      vector.length !== 3072 ||
+      vector.length !== EMBEDDING_DIMENSIONS ||
       vector.some((value) => !Number.isFinite(value))
     ) {
       throw new Error(errorMessages.invalidEmbeddingVector);

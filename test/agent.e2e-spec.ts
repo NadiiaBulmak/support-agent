@@ -9,6 +9,7 @@ import { LlmService } from '#/modules/agent/llm/llm.service.js';
 import { ToolsRegistry } from '#/modules/tools/registry/tools.registry.js';
 import { KnowledgeModule } from '#/modules/knowledge/knowledge.module.js';
 import { PrismaService } from '#/modules/db/prisma/prisma.service.js';
+import { AgentResultStatus } from '#/shared/constants/index.js';
 
 describe('AgentController (e2e)', () => {
   let app: INestApplication;
@@ -92,7 +93,7 @@ describe('AgentController (e2e)', () => {
       .send({ question: 'How do I stop overthinking?' });
 
     expect(response.status).toBe(200);
-    expect(response.body.status).toBe('success');
+    expect(response.body.status).toBe(AgentResultStatus.SUCCESS);
     expect(response.body.answer).toBe('This is a mocked CBT answer.');
   });
 });

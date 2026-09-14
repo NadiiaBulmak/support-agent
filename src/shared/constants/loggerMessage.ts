@@ -1,11 +1,13 @@
-import { ToolCallLog } from '#/shared/types/agent.types.js';
+import { ToolCallLog } from '#/shared/interfaces/toolCallLog.js';
+import { AgentResult } from '#/shared/types/dto.types.js';
+import { IntentEnum } from '#/shared/enums/domain.enums.js';
 
 export const loggerMessages = {
   agentRunStarted: (question: string) =>
     `Starting agent run for question: "${question}"`,
   workflowStarted: (question: string) =>
     `Executing workflow for question: "${question}"`,
-  logRun: (durationMs: number, result: any) =>
+  logRun: (durationMs: number, result: AgentResult) =>
     `Agent Run completed in ${durationMs}ms | Status: ${result.status} | Intent: ${result.intent || 'N/A'} | Decision: ${result.decisionSummary}`,
   logToolCall: (toolCall: ToolCallLog) =>
     `Tool Call [${toolCall.toolName}] executed in ${toolCall.durationMs}ms | Status: ${toolCall.status}`,
@@ -20,12 +22,12 @@ export const loggerMessages = {
     `Attempt ${attempt} failed validation: ${issues.join(', ')}`,
   allGenerationAttemptsFailed:
     'All generation attempts failed validation. Returning safe fallback.',
-  generatingAnswer: (intent?: string) =>
+  generatingAnswer: (intent?: IntentEnum) =>
     `Generating answer for intent: "${intent || 'unknown'}"`,
   generationAttemptFailed: (attempt: number, model: string, error: unknown) =>
     `Generation attempt ${attempt} using ${model} failed: ${error instanceof Error ? error.message : error}`,
   planning: (question: string) => `Planning for question: "${question}"`,
-  plannerOutput: (attempt: number, intent: string, needsSearch: boolean) =>
+  plannerOutput: (attempt: number, intent: IntentEnum, needsSearch: boolean) =>
     `Planner output (Attempt ${attempt}): Intent = ${intent}, NeedsSearch = ${needsSearch}`,
   plannerAttemptFailed: (attempt: number, model: string, error: unknown) =>
     `Planner attempt ${attempt} using ${model} failed: ${error instanceof Error ? error.message : error}`,

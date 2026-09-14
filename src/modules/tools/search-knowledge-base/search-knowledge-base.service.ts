@@ -1,10 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { SearchKnowledgeBaseDto, SearchKnowledgeBaseSchema } from '#/shared/dto/searchKnowledgeBase.dto.js';
+import { SearchKnowledgeBaseSchema } from '#/shared/dto/searchKnowledgeBase.dto.js';
+import { SearchKnowledgeBaseDto } from '#/shared/types/dto.types.js';
 import { SearchKnowledgeBaseService } from '#/modules/knowledge/search/searchKnowledgeBase.service.js';
 import { errorMessages } from '#/shared/constants/errorMessages.js';
 import { loggerMessages } from '#/shared/constants/loggerMessage.js';
 import { SYSTEM_PROMPT } from '#/shared/constants/systemPrompts.js';
-import { SearchResultChunk } from '#/shared/types/knowledgeRepository.types.js';
+import { SearchResultChunk } from '#/shared/interfaces/searchResultChunk.js';
 
 @Injectable()
 export class SearchKnowledgeBaseTool {

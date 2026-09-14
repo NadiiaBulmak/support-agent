@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ExecutorService } from '#/modules/agent/executor/executor.service.js';
-import { AgentResult } from '#/shared/dto/agentResult.dto.js';
+import { AgentResult } from '#/shared/types/dto.types.js';
 import { AgentLoggerService } from '#/modules/agent/agentLogger/agentLogger.service.js';
-import { ToolCallLog } from '#/shared/types/agent.types.js';
+import { ToolCallLog } from '#/shared/interfaces/toolCallLog.js';
 import { getExternalErrorCategory } from '#/shared/utils/external-error.util.js';
 import { loggerMessages } from '#/shared/constants/loggerMessage.js';
 import { errorMessages } from '#/shared/constants/errorMessages.js';

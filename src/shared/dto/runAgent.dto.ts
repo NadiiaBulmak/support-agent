@@ -8,5 +8,3 @@ export const RunAgentDtoSchema = z.object({
     .min(1, errorMessages.questionEmpty)
     .max(MAX_INPUT_LENGTH, errorMessages.questionTooLong(MAX_INPUT_LENGTH)),
 });
-
-export type RunAgentDto = z.infer<typeof RunAgentDtoSchema>;

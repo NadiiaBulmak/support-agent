@@ -1,13 +1,8 @@
 import { z } from 'zod';
+import { AgentResultStatus, IntentEnum } from '#/shared/enums/domain.enums.js';
 
 export const AgentResultSchema = z.object({
-  status: z.enum([
-    'success',
-    'needs_clarification',
-    'out_of_scope',
-    'safety_escalation',
-    'error',
-  ]),
+  status: z.enum(AgentResultStatus),
   answer: z.string(),
   sources: z.array(
     z.object({
@@ -21,14 +16,6 @@ export const AgentResultSchema = z.object({
   confidence: z.number().min(0).max(1),
   decisionSummary: z.string(),
   intent: z
-    .enum([
-      'psychoeducation',
-      'thought_exploration',
-      'cbt_exercise',
-      'clarification',
-      'out_of_scope',
-    ])
+    .enum(IntentEnum)
     .optional(),
 });
-
-export type AgentResult = z.infer<typeof AgentResultSchema>;

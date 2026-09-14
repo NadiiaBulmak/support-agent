@@ -1,7 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { KnowledgeChunk } from '#/shared/types/agent.types.js';
+import { KnowledgeChunk } from '#/shared/interfaces/knowledgeChunk.js';
+import {
+  EnvironmentVariables,
+  IntentEnum,
+} from '#/shared/enums/domain.enums.js';
+import { DEFAULT_GENERATION_MODEL } from '#/shared/constants/domain.constants.js';
 import { SYSTEM_PROMPT } from '#/shared/constants/systemPrompts.js';
 import { errorMessages } from '#/shared/constants/errorMessages.js';
 import { loggerMessages } from '#/shared/constants/loggerMessage.js';
@@ -16,14 +21,14 @@ export class LlmService {
   private readonly genAI?: GoogleGenerativeAI;
 
   constructor(private readonly configService: ConfigService) {
-    const apiKey = this.configService.get<string>('EMBEDDING_API_KEY');
+    const apiKey = this.configService.get<string>(EnvironmentVariables.API_KEY);
     this.genAI = apiKey ? new GoogleGenerativeAI(apiKey) : undefined;
   }
 
   public async generateAnswer(
     question: string,
     chunks: KnowledgeChunk[],
-    intent?: string,
+    intent?: IntentEnum,
   ): Promise<string> {
     this.logger.log(loggerMessages.generatingAnswer(intent));
 
@@ -47,8 +52,8 @@ export class LlmService {
     );
 
     const primaryModel =
-      this.configService.get<string>('GEMINI_MODEL') || 'gemini-3.5-flash';
-    const fallbackModel = this.configService.get<string>('FALLBACK_MODEL');
+      this.configService.get<string>(EnvironmentVariables.GENERATION_MODEL) || DEFAULT_GENERATION_MODEL;
+    const fallbackModel = this.configService.get<string>(EnvironmentVariables.FALLBACK_MODEL);
     const models = [...new Set([primaryModel, fallbackModel].filter(Boolean))];
     const maxAttempts = Math.max(2, models.length);
 

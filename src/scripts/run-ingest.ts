@@ -3,7 +3,7 @@ import { AppModule } from '#/app.module.js';
 import { IngestService } from '#/modules/knowledge/ingest/ingest.service.js';
 
 const bootstrap = async () => {
-  console.log('Ініціалізація NestJS контексту...');
+  console.log('Initializing NestJS context...');
   
   const app = await NestFactory.createApplicationContext(AppModule);
   

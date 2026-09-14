@@ -19,9 +19,9 @@ async function bootstrap() {
 
   const results = await searchService.search(query, 2);
 
-  results.forEach((res, i) => {
-    console.log(`--- [Чанк ${i + 1}] (Distance: ${Number(res.distance).toFixed(4)}) ---`);
-    console.log(res.content);
+  results.forEach((result, i) => {
+    console.log(`--- [Chunk ${i + 1}] (Distance: ${Number(result.distance).toFixed(4)}) ---`);
+    console.log(result.content);
     console.log('\n');
   });
 

@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '#/modules/db/prisma/prisma.service.js';
-import { AgentResult } from '#/shared/dto/agentResult.dto.js';
+import { AgentResult } from '#/shared/types/dto.types.js';
 import { AgentRunStatus } from '#/generated/prisma/browser.js';
-import { ToolCallLog } from '#/shared/types/agent.types.js';
+import { ToolCallLog } from '#/shared/interfaces/toolCallLog.js';
 import { toolCallStatusMap } from '#/shared/constants/toolCallStatusMap.js';
 import { errorMessages } from '#/shared/constants/errorMessages.js';
 import { loggerMessages } from '#/shared/constants/loggerMessage.js';

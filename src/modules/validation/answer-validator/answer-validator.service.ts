@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ValidationResult } from '#/shared/interfaces/validationResult.js';
 import { loggerMessages } from '#/shared/constants/loggerMessage.js';
+import { ANSWER_MEDICAL_KEYWORDS } from '#/shared/constants/policy.constants.js';
+import { IntentEnum } from '#/shared/enums/domain.enums.js';
 
 @Injectable()
 export class AnswerValidatorService {
@@ -9,7 +11,7 @@ export class AnswerValidatorService {
   public validateAnswer(
     answer: string,
     retrievedChunksCount: number,
-    intent?: string,
+    intent?: IntentEnum,
   ): ValidationResult {
     const issues: string[] = [];
 
@@ -17,17 +19,16 @@ export class AnswerValidatorService {
       issues.push('Answer is empty.');
     }
 
-    const medicalKeywords = ['diagnose', 'prescription', 'medication', 'take this drug', 'treatment plan', 'surgery', 'injection', 'vaccine', 'therapy', 'clinical trial'];
     const lowerAnswer = answer.toLowerCase();
     
-    for (const keyword of medicalKeywords) {
+    for (const keyword of ANSWER_MEDICAL_KEYWORDS) {
       if (lowerAnswer.includes(keyword)) {
         issues.push(`Answer contains medical/clinical boundary violation: "${keyword}".`);
       }
     }
 
     const grounded = retrievedChunksCount > 0;
-    const canUseUserContext = intent === 'thought_exploration';
+    const canUseUserContext = intent === IntentEnum.THOUGHT_EXPLORATION;
     if (
       !grounded &&
       !canUseUserContext &&

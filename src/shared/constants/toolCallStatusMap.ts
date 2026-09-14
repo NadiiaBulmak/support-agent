@@ -1,7 +1,7 @@
 import { ToolCallStatus } from '#/generated/prisma/enums.js';
-import { ToolCallLog } from '#/shared/types/agent.types.js';
+import { ToolCallExecutionStatus } from '#/shared/enums/domain.enums.js';
 
-export const toolCallStatusMap: Record<ToolCallLog['status'], ToolCallStatus> = {
-  success: ToolCallStatus.COMPLETED,
-  error: ToolCallStatus.FAILED,
+export const toolCallStatusMap: Record<ToolCallExecutionStatus, ToolCallStatus> = {
+  [ToolCallExecutionStatus.SUCCESS]: ToolCallStatus.COMPLETED,
+  [ToolCallExecutionStatus.ERROR]: ToolCallStatus.FAILED,
 };

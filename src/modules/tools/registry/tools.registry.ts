@@ -3,7 +3,8 @@ import { SearchKnowledgeBaseTool } from '#/modules/tools/search-knowledge-base/s
 import { SYSTEM_PROMPT } from '#/shared/constants/systemPrompts.js';
 import { ValidateInputService } from '#/modules/tools/validate-input/validate-input.service.js';
 import { SafetyCheckService } from '#/modules/tools/safety-check/safety-check.service.js';
-import { SearchKnowledgeBaseDto } from '#/shared/dto/searchKnowledgeBase.dto.js';
+import { SearchKnowledgeBaseDto } from '#/shared/types/dto.types.js';
+import { ToolName } from '#/shared/enums/domain.enums.js';
 
 @Injectable()
 export class ToolsRegistry {
@@ -15,8 +16,8 @@ export class ToolsRegistry {
 
   public getToolsList() {
     return [
-      { name: 'validate_input', execute: (input: string) => this.validateInputService.validate(input) },
-      { name: 'safety_check', execute: (input: string) => this.safetyCheckService.check(input) },
+      { name: ToolName.VALIDATE_INPUT, execute: (input: string) => this.validateInputService.validate(input) },
+      { name: ToolName.SAFETY_CHECK, execute: (input: string) => this.safetyCheckService.check(input) },
       {
         name: this.searchKnowledgeBaseTool.name,
         execute: (input: SearchKnowledgeBaseDto) =>
@@ -26,15 +27,15 @@ export class ToolsRegistry {
   }
 
   public execute(
-    name: 'validate_input',
+    name: ToolName.VALIDATE_INPUT,
     input: string,
   ): ReturnType<ValidateInputService['validate']>;
   public execute(
-    name: 'safety_check',
+    name: ToolName.SAFETY_CHECK,
     input: string,
   ): ReturnType<SafetyCheckService['check']>;
   public execute(
-    name: 'search_knowledge_base',
+    name: ToolName.SEARCH_KNOWLEDGE_BASE,
     input: SearchKnowledgeBaseDto,
   ): ReturnType<SearchKnowledgeBaseTool['search']>;
   public execute(name: string, input: unknown): unknown {

@@ -4,18 +4,18 @@ import { AgentService } from '#/modules/agent/agent.service.js';
 import { errorMessages } from '#/shared/constants/errorMessages.js';
 
 async function bootstrap() {
-  console.log('Ініціалізація RAG Агента...');
+  console.log('Initializing RAG Agent...');
   const app = await NestFactory.createApplicationContext(AppModule);
   const agentService = app.get(AgentService);
 
-  const testQuestion = 'Що таке катастрофізація і як з нею працювати в КПТ?';
+  const testQuestion = 'What is catastrophization and how to deal with it in CBT?';
 
-  console.log(`\n Запитання користувача: "${testQuestion}"\n`);
-  console.log('🤖 Агент розмірковує та шукає інформацію в PostgreSQL...\n');
+  console.log(`\n Question: "${testQuestion}"\n`);
+  console.log('🤖 Agent is thinking and searching for information in PostgreSQL...\n');
 
   try {
     const answer = await agentService.run(testQuestion);
-    console.log('================ [ВІДПОВІДЬ АГЕНТА] ================');
+    console.log('================ [AGENT RESPONSE] ================');
     console.log(answer);
     console.log('====================================================\n');
   } catch (error) {

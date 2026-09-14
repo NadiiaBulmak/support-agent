@@ -1,15 +1,8 @@
 import { z } from 'zod';
+import { IntentEnum } from '#/shared/enums/domain.enums.js';
 
 export const PlannerOutputSchema = z.object({
-  intent: z.enum([
-    'psychoeducation',
-    'thought_exploration',
-    'cbt_exercise',
-    'clarification',
-    'out_of_scope',
-  ]),
+  intent: z.enum(IntentEnum),
   needsKnowledgeSearch: z.boolean(),
   retrievalQuery: z.string().optional(),
 });
-
-export type PlannerOutput = z.infer<typeof PlannerOutputSchema>;

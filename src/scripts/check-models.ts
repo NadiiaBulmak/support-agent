@@ -1,31 +1,32 @@
 import 'dotenv/config';
+import { EnvironmentVariables } from '#/shared/enums/domain.enums.js';
+import { ModelsResponse } from '#/shared/interfaces/embeddingModel.js';
 
 async function checkModels() {
-  const apiKey = process.env.EMBEDDING_API_KEY;
+  const apiKey = process.env[EnvironmentVariables.API_KEY];
   
   if (!apiKey) {
-    console.log('EMBEDDING_API_KEY не знайдено в .env');
+    console.log('EMBEDDING_API_KEY not found in .env');
     return;
   }
 
-  console.log('Запит до Google API...');
+  console.log('Querying Google API...');
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-  const data = await response.json();
+  const data = (await response.json()) as ModelsResponse;
 
   if (data.models) {
-    // Шукаємо тільки ті моделі, які підтримують генерацію векторів (embedContent)
-    const embedModels = data.models.filter((m: any) => 
-      m.supportedGenerationMethods?.includes('embedContent')
+    const embedModels = data.models.filter((model) =>
+      model.supportedGenerationMethods?.includes('embedContent')
     );
     
-    console.log('\n✅ ДОСТУПНІ МОДЕЛІ ДЛЯ ВЕКТОРІВ:');
-    embedModels.forEach((m: any) => console.log(`- ${m.name} (вимірів: ${m.outputTokenLimit || 'не вказано'})`));
+    console.log('\n✅ AAvailable embedding models:');
+    embedModels.forEach((model) => console.log(`- ${model.name} (dimensions: ${model.outputTokenLimit || 'not specified'})`));
     
     if (embedModels.length === 0) {
-      console.log('❌ Ваш API ключ не має доступу до жодної моделі ембедінгів.');
+      console.log('❌ Your API key does not have access to any embedding models.');
     }
   } else {
-    console.log('Помилка від API:', data);
+    console.log('Error from API:', data);
   }
 }
 

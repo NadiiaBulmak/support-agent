@@ -1,11 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AnswerValidatorService } from '#/modules/validation/answer-validator/answer-validator.service.js';
-import { KnowledgeChunk } from '#/shared/types/agent.types.js';
-import { AgentResult, AgentResultSchema } from '#/shared/dto/agentResult.dto.js';
+import {
+  AgentResultStatus,
+  IntentEnum,
+  SafetyStatus,
+  ToolName,
+  ToolCallExecutionStatus,
+} from '#/shared/enums/domain.enums.js';
+import {
+  DEFAULT_SEARCH_LIMIT,
+  MAX_GENERATION_ATTEMPTS,
+} from '#/shared/constants/domain.constants.js';
+import { KnowledgeChunk } from '#/shared/interfaces/knowledgeChunk.js';
+import { AgentResultSchema } from '#/shared/dto/agentResult.dto.js';
+import { AgentResult } from '#/shared/types/dto.types.js';
 import { PlannerService } from '#/modules/agent/planner/planner.service.js';
 import { LlmService } from '#/modules/agent/llm/llm.service.js';
 import { ValidationResult } from '#/shared/interfaces/validationResult.js';
-import { ToolCallLog } from '#/shared/types/agent.types.js';
+import { ToolCallLog } from '#/shared/interfaces/toolCallLog.js';
 import { errorMessages } from '#/shared/constants/errorMessages.js';
 import { loggerMessages } from '#/shared/constants/loggerMessage.js';
 import { ToolsRegistry } from '#/modules/tools/registry/tools.registry.js';
@@ -27,10 +39,10 @@ export class ExecutorService {
   ): Promise<AgentResult> {
     this.logger.log(loggerMessages.workflowStarted(question));
 
-    const inputValidation = this.toolsRegistry.execute('validate_input', question);
+    const inputValidation = this.toolsRegistry.execute(ToolName.VALIDATE_INPUT, question);
     if (!inputValidation.isValid) {
       return AgentResultSchema.parse({
-        status: 'error',
+        status: AgentResultStatus.ERROR,
         answer: inputValidation.reason || errorMessages.invalidInput,
         sources: [],
         confidence: 0,
@@ -38,12 +50,12 @@ export class ExecutorService {
       });
     }
 
-    const safetyStatus = this.toolsRegistry.execute('safety_check', question);
+    const safetyStatus = this.toolsRegistry.execute(ToolName.SAFETY_CHECK, question);
 
-    if (safetyStatus === 'needs_escalation') {
+    if (safetyStatus === SafetyStatus.NEEDS_ESCALATION) {
       this.logger.warn(loggerMessages.safetyEscalation);
       return AgentResultSchema.parse({
-        status: 'safety_escalation',
+        status: AgentResultStatus.SAFETY_ESCALATION,
         answer: errorMessages.safetyEscalation,
         sources: [],
         confidence: 1.0,
@@ -51,10 +63,10 @@ export class ExecutorService {
       });
     }
 
-    if (safetyStatus === 'out_of_scope') {
+    if (safetyStatus === SafetyStatus.OUT_OF_SCOPE) {
       this.logger.log(loggerMessages.outOfScope);
       return AgentResultSchema.parse({
-        status: 'out_of_scope',
+        status: AgentResultStatus.OUT_OF_SCOPE,
         answer: errorMessages.medicalAdviceNotSupported,
         sources: [],
         confidence: 1.0,
@@ -64,9 +76,9 @@ export class ExecutorService {
 
     const plan = await this.plannerService.plan(question);
 
-    if (plan.intent === 'clarification') {
+    if (plan.intent === IntentEnum.CLARIFICATION) {
       return AgentResultSchema.parse({
-        status: 'needs_clarification',
+        status: AgentResultStatus.NEEDS_CLARIFICATION,
         answer: errorMessages.clarificationNeeded,
         sources: [],
         confidence: 0.8,
@@ -75,9 +87,9 @@ export class ExecutorService {
       });
     }
 
-    if (plan.intent === 'out_of_scope') {
+    if (plan.intent === IntentEnum.OUT_OF_SCOPE) {
       return AgentResultSchema.parse({
-        status: 'out_of_scope',
+        status: AgentResultStatus.OUT_OF_SCOPE,
         answer: errorMessages.requestOutOfScope,
         sources: [],
         confidence: 1.0,
@@ -92,8 +104,8 @@ export class ExecutorService {
       const retrievalQuery = plan.retrievalQuery || question;
       try {
         const searchResults = await this.toolsRegistry.execute(
-          'search_knowledge_base',
-          { query: retrievalQuery, limit: 3 },
+          ToolName.SEARCH_KNOWLEDGE_BASE,
+          { query: retrievalQuery, limit: DEFAULT_SEARCH_LIMIT },
         );
         const toolDuration = Date.now() - toolStartTime;
 
@@ -104,20 +116,20 @@ export class ExecutorService {
         }));
 
         toolLogs.push({
-          toolName: 'search_knowledge_base',
-          input: { query: retrievalQuery, limit: 3 },
+          toolName: ToolName.SEARCH_KNOWLEDGE_BASE,
+          input: { query: retrievalQuery, limit: DEFAULT_SEARCH_LIMIT },
           output: { chunksFound: searchResults.length },
-          status: 'success',
+          status: ToolCallExecutionStatus.SUCCESS,
           durationMs: toolDuration,
         });
       } catch (error) {
         const toolDuration = Date.now() - toolStartTime;
         
         toolLogs.push({
-          toolName: 'search_knowledge_base',
-          input: { query: retrievalQuery, limit: 3 },
+          toolName: ToolName.SEARCH_KNOWLEDGE_BASE,
+          input: { query: retrievalQuery, limit: DEFAULT_SEARCH_LIMIT },
           output: error instanceof Error ? error.message : errorMessages.unknownError,
-          status: 'error',
+          status: ToolCallExecutionStatus.ERROR,
           durationMs: toolDuration,
         });
         
@@ -126,7 +138,7 @@ export class ExecutorService {
       }
     }
 
-    const maxAttempts = 2;
+    const maxAttempts = MAX_GENERATION_ATTEMPTS;
     let draftAnswer = '';
     let validationResult: ValidationResult = { valid: false, grounded: false, issues: [] };
 
@@ -148,7 +160,7 @@ export class ExecutorService {
       if (validationResult.valid) {
         this.logger.log(loggerMessages.answerPassedValidation(attempt));
         return AgentResultSchema.parse({
-          status: 'success',
+          status: ToolCallExecutionStatus.SUCCESS,
           answer: draftAnswer,
           sources: retrievedChunks,
           confidence: 0.95,
@@ -162,9 +174,9 @@ export class ExecutorService {
 
     this.logger.error(loggerMessages.allGenerationAttemptsFailed);
     return AgentResultSchema.parse({
-      status: 'success',
+      status: AgentResultStatus.SUCCESS,
       answer:
-        plan.intent === 'thought_exploration'
+        plan.intent === IntentEnum.THOUGHT_EXPLORATION
           ? errorMessages.supportiveFallback
           : errorMessages.noRelevantInformation,
       sources: retrievedChunks,

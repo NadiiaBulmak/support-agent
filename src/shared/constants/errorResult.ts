@@ -1,7 +1,8 @@
-import { AgentResult } from '#/shared/dto/agentResult.dto.js';
+import { AgentResultStatus } from '#/shared/enums/domain.enums.js';
+import { AgentResult } from '#/shared/types/dto.types.js';
 
 export const errorResult: AgentResult = {
-  status: 'error',
+  status: AgentResultStatus.ERROR,
   answer: 'The request could not be processed.',
   sources: [],
   confidence: 0,
