@@ -6,7 +6,7 @@ async function checkModels() {
   const apiKey = process.env[EnvironmentVariables.API_KEY];
   
   if (!apiKey) {
-    console.log('EMBEDDING_API_KEY not found in .env');
+    console.log('LLM_API_KEY not found in .env');
     return;
   }
 

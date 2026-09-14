@@ -32,7 +32,7 @@ export enum ToolCallExecutionStatus {
 }
 
 export enum EnvironmentVariables {
-  API_KEY = 'EMBEDDING_API_KEY',
+  API_KEY = 'LLM_API_KEY',
   GENERATION_MODEL = 'GEMINI_MODEL',
   FALLBACK_MODEL = 'FALLBACK_MODEL',
   DATABASE_URL = 'DATABASE_URL',

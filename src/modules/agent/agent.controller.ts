@@ -11,24 +11,13 @@ import {
   ApiBody,
   ApiOkResponse,
   ApiOperation,
-  ApiProperty,
   ApiTags,
 } from '@nestjs/swagger';
 import { AgentService } from '#/modules/agent/agent.service.js';
 import { RunAgentDtoSchema } from '#/shared/dto/runAgent.dto.js';
 import { AgentResultStatus, IntentEnum } from '#/shared/enums/domain.enums.js';
 import { AgentResult } from '#/shared/types/dto.types.js';
-import { MAX_INPUT_LENGTH } from '#/shared/constants/index.js';
-
-class RunAgentSwaggerDto {
-  @ApiProperty({
-    description: 'User question for the support agent',
-    example: 'What is cognitive restructuring?',
-    minLength: 1,
-    maxLength: MAX_INPUT_LENGTH,
-  })
-  question!: string;
-}
+import { RunAgentSwaggerDto } from '#/shared/dto/runAgentSwagger.dto.js';
 
 @ApiTags('Agent')
 @Controller('api/agent')

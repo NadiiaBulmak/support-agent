@@ -9,7 +9,7 @@ import { LlmService } from '#/modules/agent/llm/llm.service.js';
 import { ToolsRegistry } from '#/modules/tools/registry/tools.registry.js';
 import { KnowledgeModule } from '#/modules/knowledge/knowledge.module.js';
 import { PrismaService } from '#/modules/db/prisma/prisma.service.js';
-import { AgentResultStatus } from '#/shared/constants/index.js';
+import { AgentResultStatus } from '#/shared/enums/domain.enums.js';
 
 describe('AgentController (e2e)', () => {
   let app: INestApplication;

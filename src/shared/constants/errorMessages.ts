@@ -22,7 +22,7 @@ export const errorMessages = {
   llmApiKeyMissing: 'LLM_API_KEY is not set.',
   invalidLlmResponse: 'LLM returned an invalid response: empty response.',
   llmGenerationFailed: 'LLM generation failed after retries.',
-  embeddingApiKeyMissing: 'EMBEDDING_API_KEY is not set in the environment variables.',
+  embeddingApiKeyMissing: 'LLM_API_KEY is not set in the environment variables.',
   invalidEmbeddingVector: 'Embedding API returned an invalid vector.',
   knowledgeSearchFailed: 'An error occurred while searching the knowledge base.',
   scriptExecutionFailed: 'Script execution failed:',

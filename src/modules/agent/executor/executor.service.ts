@@ -19,6 +19,7 @@ import { LlmService } from '#/modules/agent/llm/llm.service.js';
 import { ValidationResult } from '#/shared/interfaces/validationResult.js';
 import { ToolCallLog } from '#/shared/interfaces/toolCallLog.js';
 import { errorMessages } from '#/shared/constants/errorMessages.js';
+import { decisionSummaries } from '#/shared/constants/decisionSummary.constants.js';
 import { loggerMessages } from '#/shared/constants/loggerMessage.js';
 import { ToolsRegistry } from '#/modules/tools/registry/tools.registry.js';
 
@@ -46,7 +47,7 @@ export class ExecutorService {
         answer: inputValidation.reason || errorMessages.invalidInput,
         sources: [],
         confidence: 0,
-        decisionSummary: 'Input validation rejected the question.',
+        decisionSummary: decisionSummaries.inputValidationRejected,
       });
     }
 
@@ -59,7 +60,7 @@ export class ExecutorService {
         answer: errorMessages.safetyEscalation,
         sources: [],
         confidence: 1.0,
-        decisionSummary: 'Crisis language triggered safety escalation before planning.',
+        decisionSummary: decisionSummaries.safetyEscalationBeforePlanning,
       });
     }
 
@@ -70,7 +71,7 @@ export class ExecutorService {
         answer: errorMessages.medicalAdviceNotSupported,
         sources: [],
         confidence: 1.0,
-        decisionSummary: 'A deterministic scope guardrail rejected the request before planning.',
+        decisionSummary: decisionSummaries.scopeGuardrailRejected,
       });
     }
 
@@ -83,7 +84,7 @@ export class ExecutorService {
         sources: [],
         confidence: 0.8,
         intent: plan.intent,
-        decisionSummary: 'Planner classified the request as clarification and no retrieval was needed.',
+        decisionSummary: decisionSummaries.clarificationWithoutRetrieval,
       });
     }
 
@@ -94,7 +95,7 @@ export class ExecutorService {
         sources: [],
         confidence: 1.0,
         intent: plan.intent,
-        decisionSummary: 'Planner classified the request as out of scope.',
+        decisionSummary: decisionSummaries.plannerOutOfScope,
       });
     }
 
@@ -165,7 +166,7 @@ export class ExecutorService {
           sources: retrievedChunks,
           confidence: 0.95,
           intent: plan.intent,
-          decisionSummary: `Planner selected ${retrievedChunks.length} knowledge sources and answer validation passed.`,
+          decisionSummary: decisionSummaries.answerValidationPassed(retrievedChunks.length),
         });
       }
 
@@ -182,7 +183,7 @@ export class ExecutorService {
       sources: retrievedChunks,
       confidence: 0.4,
       intent: plan.intent,
-      decisionSummary: 'Generation completed, but all answer validation attempts failed; returned a safe fallback.',
+      decisionSummary: decisionSummaries.safeFallback,
     });
   }
 }

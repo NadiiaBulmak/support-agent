@@ -28,7 +28,7 @@ export class IngestService {
   public async ingestKnowledge(): Promise<void> {
     this.logger.log(loggerMessages.ingestingKnowledge(this.sourcePath));
 
-    const fileName = 'cbt-material.md';
+    const fileName = process.env.FILE_NAME || 'cbt-material.md';
     const fileData = cleanText(await this.readSourceFiles(fileName));
     const chunks = await chunkText(fileData);
 
