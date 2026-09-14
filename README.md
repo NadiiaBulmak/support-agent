@@ -106,67 +106,39 @@ Possible statuses are `success`, `needs_clarification`, `out_of_scope`, `safety_
 
 ## Local Setup
 
-This section is the complete local setup path. The application is the NestJS API; PostgreSQL is provided separately by Docker Compose. The API does not start the database automatically.
+The application is a NestJS API. PostgreSQL with pgvector runs separately through Docker Compose.
 
 ### Prerequisites
 
 - Node.js 22 or a compatible Node.js release;
 - npm;
-- Docker Desktop with Docker Compose, or another PostgreSQL 16 instance with the `vector` extension;
-- a Gemini API key. The same key can be used for generation and embeddings unless the provider account requires separate keys;
-- a CBT source file whose copyright and redistribution terms have been verified for your use.
+- Docker Desktop with Docker Compose;
+- a Gemini API key;
+- a legally redistributable CBT source file for ingestion.
 
 ### 1. Install dependencies
 
-From the repository root:
+Clone the repository and install dependencies:
 
 ```bash
 npm install
+```
+
+The repository already contains the generated Prisma Client, so running `prisma generate` is not required for the standard setup. If the Prisma schema or generated client is changed during development, regenerate it with:
+
+```bash
 npm run prisma:generate
 ```
 
-`prisma:generate` generates the Prisma 7 client under `src/generated/prisma`, which is imported by the application.
+### 2. Configure environment variables
 
-### 2. Start PostgreSQL and pgvector
-
-The included `docker-compose.yml` starts `pgvector/pgvector:pg16` with:
-
-- database: `support_agent`;
-- user: `postgres`;
-- password: `postgres`;
-- host port: `5435` (container port `5432`);
-- persistent volume: `postgres_data`.
-
-Start it in the repository root:
-
-```bash
-docker compose up -d postgres
-docker compose ps
-```
-
-The matching local connection string is:
-
-```text
-postgresql://postgres:postgres@localhost:5435/support_agent?schema=public
-```
-
-Stop the database when finished:
-
-```bash
-docker compose down
-```
-
-To remove the database data as well and recreate it from scratch, use `docker compose down -v`. This deletes the local PostgreSQL volume.
-
-If you use an external PostgreSQL/Neon database instead, do not start the Compose database and put that provider's connection string in `DATABASE_URL`. The database must have the `vector` extension enabled.
-
-### 3. Configure environment variables
-
-Copy `.env.example` to `.env` and fill in the values:
+Copy `.env.example` to `.env`:
 
 ```powershell
 Copy-Item .env.example .env
 ```
+
+Configure the required values:
 
 ```dotenv
 DATABASE_URL=postgresql://postgres:postgres@localhost:5435/support_agent?schema=public
@@ -178,104 +150,260 @@ FALLBACK_MODEL=gemini-3.5-flash-lite
 PORT=3000
 ```
 
-`DATABASE_URL` selects the PostgreSQL database. `SOURCE_PATH` is a directory, not a file: ingestion always reads `cbt-material.md` from that directory. API keys are required for planner, answer-generation, and embedding calls. Never commit `.env`.
+`DATABASE_URL` selects the PostgreSQL database.
 
-### 4. Add the knowledge source
+`SOURCE_PATH` is the directory containing the knowledge source file.
 
-The repository currently contains `src/modules/knowledge/sources/cbt-material.md` and `metadata.json`. The metadata records the source license as `Not specified`, so verify the source terms before redistributing the repository or using a different source. For a clean setup, replace the file with material you are allowed to use, or set `SOURCE_PATH` to another directory and set `FILE_NAME` to its file name.
+`FILE_NAME` specifies the file used during knowledge-base ingestion.
 
-The ingestion command cleans the file, splits it into chunks, creates Gemini embeddings with the configured `LLM_API_KEY`, and stores the document and chunks in PostgreSQL. It requires a reachable database and a valid `LLM_API_KEY`.
+`LLM_API_KEY` is required for planner, answer-generation, and embedding requests.
 
-### 5. Apply the database schema
+Never commit `.env` or expose API keys in the repository.
+
+### 3. Start PostgreSQL and pgvector
+
+The included `docker-compose.yml` provides the PostgreSQL database with the `vector` extension.
+
+Start PostgreSQL:
+
+```bash
+docker compose up -d postgres
+```
+
+Check that the container is running:
+
+```bash
+docker compose ps
+```
+
+The local database uses:
+
+```text
+Database: support_agent
+User: postgres
+Password: postgres
+Host: localhost
+Port: 5435
+```
+
+The corresponding connection string is:
+
+```text
+postgresql://postgres:postgres@localhost:5435/support_agent?schema=public
+```
+
+Stop the database when finished:
+
+```bash
+docker compose down
+```
+
+To remove the database volume and recreate the database from scratch:
+
+```bash
+docker compose down -v
+```
+
+This permanently deletes the local PostgreSQL data.
+
+### 4. Apply the database schema
 
 With PostgreSQL running and `.env` configured:
 
 ```bash
-npm run prisma:validate
 npm run db:migrate -- --name init
 ```
 
-Use `db:migrate` for local development: it applies existing migrations and creates a new migration if the schema changed. For an already-built deployment image, use `npm run db:deploy` to apply committed migrations without creating new ones. Check the state with:
+Check the migration state:
 
 ```bash
 npm run db:status
 ```
 
-The migration enables the PostgreSQL `vector` extension and creates the documents, chunks, agent runs, tool calls, conversations, and messages tables.
+For local development, `db:migrate` applies the Prisma migrations and creates a new migration when the schema changes.
 
-### 6. Ingest the knowledge base
+For an existing deployment, use:
 
-Run ingestion once after the database schema is ready, and rerun it when the source changes:
+```bash
+npm run db:deploy
+```
+
+to apply committed migrations without creating new ones.
+
+The database schema includes the tables required for:
+
+- knowledge documents and chunks;
+- agent runs;
+- tool calls;
+- conversations;
+- messages.
+
+### 5. Inspect the database with Prisma Studio
+
+After the database schema has been applied, check the database state:
+
+```bash
+npm run db:status
+```
+
+Then open Prisma Studio:
+
+```bash
+npx prisma studio
+```
+
+Prisma Studio can be used to inspect the database tables and verify that migrations and later knowledge-base ingestion have created the expected records.
+
+### 6. Add the knowledge source
+
+Create or replace:
+
+```text
+src/modules/knowledge/sources/cbt-material.md
+```
+
+Place only CBT material that you are legally allowed to use and redistribute. The repository may contain a checked-in source fixture; verify its license before redistributing it, or replace it with an approved source.
+
+The ingestion process reads the file specified by:
+
+```dotenv
+SOURCE_PATH=src/modules/knowledge/sources
+FILE_NAME=cbt-material.md
+```
+
+### 7. Ingest the knowledge base
+
+After the database schema is ready and the knowledge source has been added, run:
 
 ```bash
 npm run knowledge:ingest
 ```
 
-This command builds the project first and then runs `dist/scripts/run-ingest.js`. It makes embedding API calls and may take time depending on the number of chunks. A successful run stores rows in `documents` and `document_chunks`.
+The ingestion process:
 
-Optional checks:
+1. reads the configured source file;
+2. cleans and splits the content into chunks;
+3. creates embeddings;
+4. stores the document and chunks in PostgreSQL/pgvector.
+
+A successful ingestion creates records in:
+
+```text
+documents
+document_chunks
+```
+
+Run ingestion again when the source material changes. You can optionally verify retrieval with:
 
 ```bash
 npm run knowledge:search
-npm run db:studio
 ```
 
-`knowledge:search` runs the repository's search script. `db:studio` opens Prisma Studio for inspecting the database.
+### 8. Start the API
 
-### 7. Start the API
-
-For development with watch mode:
+Start the NestJS application in development mode:
 
 ```bash
 npm run start:dev
 ```
 
-For a production-style local run:
+The API is available at:
 
-```bash
-npm run build
-npm run start:prod
+```text
+http://localhost:3000
 ```
 
-The API is available at `http://localhost:3000`. The main endpoint is `POST http://localhost:3000/api/agent/run`; Swagger documentation is at `http://localhost:3000/api/docs`.
+Swagger documentation:
 
-### Quick API testing with Swagger
+```text
+http://localhost:3000/api/docs
+```
 
-Swagger UI provides a convenient browser-based way to test the API without writing a separate client or PowerShell command. Start the application with `npm run start:dev`, then open [http://localhost:3000/api/docs](http://localhost:3000/api/docs) in a browser.
+The main endpoint is:
+
+```text
+POST /api/agent/run
+```
+
+### 9. Test the API with Swagger
+
+Open:
+
+```text
+http://localhost:3000/api/docs
+```
 
 In Swagger UI:
 
 1. Expand `POST /api/agent/run`.
 2. Click **Try it out**.
-3. Enter a request body, for example:
+3. Enter a request body:
 
 ```json
 {
-        "question": "What is cognitive restructuring in CBT?"
+  "question": "What is cognitive restructuring in CBT?"
 }
 ```
 
 4. Click **Execute**.
-5. Review the HTTP status and structured response containing `status`, `answer`, `sources`, `confidence`, `intent`, and `decisionSummary`.
+5. Review the structured response.
 
-Swagger is useful for quickly checking normal CBT questions, clarification requests, out-of-scope input, prompt-injection handling, and safety escalation. For a complete RAG request with retrieved sources, PostgreSQL/pgvector must be running, migrations must be applied, the knowledge source must be ingested, and the required Gemini environment variables must be configured.
+A successful response contains fields such as:
 
-Example request:
+```json
+{
+  "status": "success",
+  "answer": "Human-readable answer",
+  "sources": [],
+  "confidence": 0.95,
+  "intent": "psychoeducation",
+  "decisionSummary": "..."
+}
+```
+
+For a RAG request with populated sources, PostgreSQL/pgvector must be running and the knowledge base must have been ingested successfully.
+
+### 10. Quick API test
+
+The endpoint can also be tested directly from PowerShell:
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri http://localhost:3000/api/agent/run -ContentType 'application/json' -Body '{"question":"What is catastrophizing in CBT?"}'
+Invoke-RestMethod `
+  -Method Post `
+  -Uri http://localhost:3000/api/agent/run `
+  -ContentType 'application/json' `
+  -Body '{"question":"What is catastrophizing in CBT?"}'
 ```
 
-### Docker image for the API
+The response should contain the structured agent result.
 
-`Dockerfile` builds only the NestJS API. PostgreSQL remains the separately managed Compose service, so the API container must receive a `DATABASE_URL` that points to a reachable database. Build and run it with:
+### Standard startup flow
 
-```bash
-docker build -t support-agent-api .
-docker run --rm -p 3000:3000 --env-file .env support-agent-api
+For a clean local run, the required order is:
+
+```text
+npm install
+        |
+configure .env
+        |
+docker compose up -d postgres
+        |
+npm run db:migrate -- --name init
+        |
+npm run db:status
+        |
+npx prisma studio (optional)
+        |
+add knowledge source
+        |
+npm run knowledge:ingest
+        |
+npm run start:dev
+        |
+Swagger / API request
 ```
 
-When the API runs in a container and PostgreSQL runs in the Compose network, use the database service name and container port in the connection string, for example `postgresql://postgres:postgres@postgres:5432/support_agent?schema=public`, and start both services on the same Docker network. The image does not run migrations or ingestion automatically; run those steps deliberately before serving traffic.
+The API is intentionally started directly with NestJS rather than as a Docker container. Docker Compose is used for the PostgreSQL/pgvector dependency.
 
 ## Testing And Verification
 
@@ -300,7 +428,7 @@ The tests have different purposes:
 - `npm run test:unit` checks individual services and boundaries: input validation, crisis and out-of-scope detection, prompt-injection blocking, planner schema validation, retrieval results, answer grounding, retries, fallback behavior, LLM/search failures, and non-blocking telemetry persistence. It does not require PostgreSQL or live API keys.
 - `npm run test:e2e` exercises an HTTP-level end-to-end workflow with external LLM, retrieval, and persistence dependencies mocked. It checks the HTTP controller, DTO validation, agent orchestration, tool dispatching, safety handling, and response contract; it is not a production-like live Gemini/PostgreSQL integration test.
 - `npm run test` runs both unit and e2e suites.
-- `npm run build` verifies TypeScript compilation and the production `dist` output used by the scripts and Docker image.
+- `npm run build` verifies TypeScript compilation and the production `dist` output used by the scripts and API startup.
 - `npm run lint` checks source and test code with Oxlint.
 - `npm run prisma:validate` checks the Prisma schema and configuration.
 

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { AnswerValidatorService } from '#/modules/validation/answer-validator/answer-validator.service.js';
+import { IntentEnum } from '#/shared/enums/domain.enums.js';  
 
 describe('AnswerValidatorService', () => {
   let service: AnswerValidatorService;
@@ -10,6 +11,15 @@ describe('AnswerValidatorService', () => {
 
   it('accepts a grounded answer', () => {
     const result = service.validateAnswer('CBT helps reframe negative thoughts.', 2);
+
+    expect(result).toEqual({ valid: true, grounded: true, issues: [] });
+  });
+
+  it('accepts CBT psychoeducation that mentions therapy', () => {
+    const result = service.validateAnswer(
+      'Cognitive restructuring is a technique used in cognitive behavioral therapy.',
+      1,
+    );
 
     expect(result).toEqual({ valid: true, grounded: true, issues: [] });
   });
@@ -26,7 +36,7 @@ describe('AnswerValidatorService', () => {
     const result = service.validateAnswer(
       'It sounds difficult. What evidence supports this thought, and what evidence might point to another explanation?',
       0,
-      'thought_exploration',
+      IntentEnum.THOUGHT_EXPLORATION,
     );
 
     expect(result).toEqual({ valid: true, grounded: false, issues: [] });
